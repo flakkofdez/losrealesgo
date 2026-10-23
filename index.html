@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PARA LOS GO | FIFA, Smash & Mario Party</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              gold: '#F59E0B',
+              emerald: '#10B981',
+              crimson: '#EF4444',
+              neon: '#06B6D4',
+              dark: '#0B0F19',
+              card: '#131B2E',
+              border: '#1F2E4D'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- jsPDF & autoTable para descargar el reporte limpio en PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1f2e4d; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+    /* Glass card effects */
+    .glass-card {
+      background: rgba(19, 27, 46, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(59, 130, 246, 0.18);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Roulette pointer pin */
+    .roulette-pin {
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-top: 28px solid #F59E0B;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
+    }
+
+    /* Modal animation */
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-pop {
+      animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Game card transitions */
+    .game-cover-card {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .game-cover-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px -6px rgba(0,0,0,0.7);
+    }
+    .game-cover-card.active-game {
+      ring-width: 3px;
+      transform: scale(1.02);
+    }
+  </style>
+</head>
+<body id="mainBody" class="bg-[#070A11] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-amber-500 selection:text-black">
+
+  <!-- Confetti Canvas (Absolute overlay) -->
+  <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-50 w-full h-full"></canvas>
+
+  <!-- Navigation / Top Header -->
+  <header class="border-b border-[#1A2640] bg-[#0B0F19]/95 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div id="headerLogoBox" class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-amber-500/20">
+          <i class="fa-solid fa-crown text-slate-950"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-black text-base sm:text-2xl tracking-tight bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
+              PARA LOS GO
+            </h1>
+            <span id="activeGameTag" class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              FIFA
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-semibold tracking-wide">
+            CARLOS &bull; EDGAR &bull; JOSEPH &bull; EDU &bull; Regla: 1º(+X) 2º(+X/2) 3º(-X/2) 4º(-X)
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Actions / Audio, PDF & Reset -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button id="btnSoundToggle" onclick="toggleMute()" class="p-2.5 rounded-lg bg-[#141E34] hover:bg-[#1C2C4E] text-slate-300 hover:text-amber-400 border border-[#223358] transition" title="Silenciar / Activar Sonido">
+          <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+        </button>
+
+        <!-- BOTÓN DESCARGAR REPORTE PDF LIMPIO -->
+        <button onclick="downloadCleanPDF()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 font-bold text-xs sm:text-sm shadow-lg shadow-rose-600/10 active:scale-95 transition">
+          <i class="fa-solid fa-file-pdf text-rose-400 text-base"></i>
+          <span>Descargar PDF</span>
+        </button>
+
+        <button onclick="confirmResetAll()" class="p-2 sm:px-3 sm:py-2 rounded-lg bg-[#141E34] hover:bg-rose-900/30 text-slate-400 hover:text-rose-300 border border-[#223358] hover:border-rose-800/40 font-medium text-xs sm:text-sm transition flex items-center gap-1.5" title="Reiniciar Sesión">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span class="hidden sm:inline">Nueva Noche</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Stats Bar -->
+    <div class="bg-[#0F1626] border-t border-[#18233C] px-4 py-2 text-xs overflow-x-auto whitespace-nowrap">
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-6 text-slate-300">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400">Juego Activo:</span>
+          <span id="statGameLabel" class="font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">FIFA</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400">Partidas Jugadas:</span>
+          <span id="statRoundsPlayed" class="font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">0</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400">Apuesta Actual (Ruleta):</span>
+          <span id="statCurrentBet" class="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">S/ 10.00</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400">Líder Ganador 👑:</span>
+          <span id="statTopWinner" class="font-bold text-yellow-300">-</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400">Más Salado 💀:</span>
+          <span id="statTopLoser" class="font-bold text-rose-400">-</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- SECCIÓN VISUAL LLAMATIVA CON FOTOS DE LOS 3 JUEGOS -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-1 w-full">
+    <div class="flex items-center justify-between mb-2.5">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+        <h2 class="text-xs font-black uppercase tracking-wider text-amber-300">
+          ¿A qué estamos jugando hoy? (Selecciona para ambientar la página)
+        </h2>
+      </div>
+      <span class="text-[11px] text-slate-400 hidden sm:inline">Toca una imagen para cambiar el juego</span>
+    </div>
+
+    <!-- Grid de 3 Tarjetas Visuales con Fotos Reales -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+
+      <!-- TARJETA 1: FIFA / EA SPORTS FC -->
+      <div onclick="selectGame('fifa')" id="card_fifa" class="game-cover-card cursor-pointer rounded-2xl border-2 border-emerald-500/40 bg-[#0E1628] h-36 sm:h-44 group shadow-lg shadow-black/60 relative">
+        <!-- Foto de Fondo FIFA -->
+        <img src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80" alt="FIFA EA Sports" class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition duration-500 opacity-60">
+        <!-- Gradiente oscuro para legibilidad -->
+        <div class="absolute inset-0 bg-gradient-to-t from-[#070A11] via-[#0B132B]/75 to-transparent"></div>
+
+        <!-- Contenido tarjeta -->
+        <div class="absolute inset-0 p-4 flex flex-col justify-between z-10">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/80 backdrop-blur-md text-slate-950 font-black text-xs tracking-wider flex items-center gap-1.5 shadow">
+              ⚽ FIFA / EA FC
+            </span>
+            <span id="check_fifa" class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-xs font-black shadow-md">
+              <i class="fa-solid fa-check"></i>
+            </span>
+          </div>
+
+          <div>
+            <h3 class="text-lg sm:text-xl font-black text-white drop-shadow-md tracking-tight group-hover:text-emerald-300 transition">
+              EA SPORTS FC / FIFA
+            </h3>
+            <p class="text-[11px] text-emerald-200/90 font-medium drop-shadow">
+              Fútbol, goles de último minuto y revanchas calientes.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TARJETA 2: SUPER SMASH BROS. ULTIMATE -->
+      <div onclick="selectGame('smash')" id="card_smash" class="game-cover-card cursor-pointer rounded-2xl border-2 border-rose-500/30 bg-[#0E1628] h-36 sm:h-44 group shadow-lg shadow-black/60 relative">
+        <!-- Foto de Fondo Smash Bros -->
+        <img src="https://assets.nintendo.com/image/upload/c_pad,f_auto,h_613,q_auto,w_1089/ncom/en_US/games/switch/s/super-smash-bros-ultimate-switch/hero" alt="Super Smash Bros Ultimate" class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition duration-500 opacity-55">
+        <!-- Gradiente oscuro -->
+        <div class="absolute inset-0 bg-gradient-to-t from-[#070A11] via-[#2A080C]/80 to-transparent"></div>
+
+        <!-- Contenido tarjeta -->
+        <div class="absolute inset-0 p-4 flex flex-col justify-between z-10">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg bg-rose-600/80 backdrop-blur-md text-white font-black text-xs tracking-wider flex items-center gap-1.5 shadow">
+              🥊 SMASH ULTIMATE
+            </span>
+            <span id="check_smash" class="w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center text-xs font-black shadow-md hidden">
+              <i class="fa-solid fa-check"></i>
+            </span>
+          </div>
+
+          <div>
+            <h3 class="text-lg sm:text-xl font-black text-white drop-shadow-md tracking-tight group-hover:text-rose-300 transition">
+              SMASH BROS. ULTIMATE
+            </h3>
+            <p class="text-[11px] text-rose-200/90 font-medium drop-shadow">
+              Todos contra todos, golpes finales y caídas al vacío.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TARJETA 3: MARIO PARTY SUPERSTARS -->
+      <div onclick="selectGame('marioparty')" id="card_marioparty" class="game-cover-card cursor-pointer rounded-2xl border-2 border-amber-500/30 bg-[#0E1628] h-36 sm:h-44 group shadow-lg shadow-black/60 relative">
+        <!-- Foto de Fondo Mario Party -->
+        <img src="https://assets.nintendo.com/image/upload/c_pad,f_auto,h_613,q_auto,w_1089/ncom/en_CA/games/switch/m/mario-party-superstars-switch/hero" alt="Mario Party Superstars" class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition duration-500 opacity-55">
+        <!-- Gradiente oscuro -->
+        <div class="absolute inset-0 bg-gradient-to-t from-[#070A11] via-[#2D1A03]/80 to-transparent"></div>
+
+        <!-- Contenido tarjeta -->
+        <div class="absolute inset-0 p-4 flex flex-col justify-between z-10">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg bg-amber-500/80 backdrop-blur-md text-slate-950 font-black text-xs tracking-wider flex items-center gap-1.5 shadow">
+              🎲 MARIO PARTY
+            </span>
+            <span id="check_marioparty" class="w-6 h-6 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center text-xs font-black shadow-md hidden">
+              <i class="fa-solid fa-check"></i>
+            </span>
+          </div>
+
+          <div>
+            <h3 class="text-lg sm:text-xl font-black text-white drop-shadow-md tracking-tight group-hover:text-amber-300 transition">
+              MARIO PARTY
+            </h3>
+            <p class="text-[11px] text-amber-200/90 font-medium drop-shadow">
+              Robo de estrellas, minijuegos y traición entre amigos.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: RULETA & AMIGOS (5 cols) -->
+    <div class="lg:col-span-5 flex flex-col gap-6">
+      
+      <!-- Card: Ruleta Interactiva -->
+      <section class="glass-card rounded-2xl p-5 relative overflow-hidden flex flex-col items-center">
+        <div class="w-full flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <h2 class="font-bold text-slate-100 flex items-center gap-2 text-sm sm:text-base">
+              <i class="fa-solid fa-dharmachakra text-amber-400"></i> Ruleta Oficial: PARA LOS GO
+            </h2>
+          </div>
+          <span id="wheelModeBadge" class="text-[11px] font-semibold uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">
+            Apuestas (Soles)
+          </span>
+        </div>
+
+        <!-- Wheel Canvas Container -->
+        <div class="relative my-2 flex items-center justify-center">
+          <!-- Top Arrow Pointer -->
+          <div class="absolute -top-3 z-20 flex flex-col items-center pointer-events-none">
+            <div class="roulette-pin"></div>
+          </div>
+
+          <!-- Canvas -->
+          <div class="p-2 rounded-full bg-gradient-to-b from-[#1E2C48] to-[#0D1525] p-2.5 shadow-2xl shadow-black/80 border border-[#2B3E68]">
+            <canvas id="wheelCanvas" width="340" height="340" class="rounded-full cursor-pointer transition-transform duration-100"></canvas>
+          </div>
+
+          <!-- Center Spin Button -->
+          <button id="btnSpin" onclick="spinWheel()" class="absolute z-20 w-16 h-16 rounded-full bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-xs tracking-wider uppercase shadow-xl shadow-amber-500/40 border-2 border-yellow-200 active:scale-95 transition flex flex-col items-center justify-center gap-0.5">
+            <i class="fa-solid fa-play text-xs"></i>
+            <span>GIRAR</span>
+          </button>
+        </div>
+
+        <!-- Presets Rápidos -->
+        <div class="w-full mt-3 pt-3 border-t border-[#1C2C4A]">
+          <p class="text-xs font-medium text-slate-400 mb-2 flex items-center justify-between">
+            <span>Plantillas de Números:</span>
+            <span class="text-[11px] text-amber-400/80">Clic para cambiar la ruleta</span>
+          </p>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="loadPreset('apuestas')" class="px-2.5 py-1.5 text-xs rounded-lg bg-[#18233C] hover:bg-[#203053] text-slate-200 border border-[#273860] transition flex items-center justify-center gap-1.5 font-medium">
+              <i class="fa-solid fa-coins text-amber-400"></i> Apuestas (4, 6, 8, 10, 12, 16, 20)
+            </button>
+            <button onclick="loadPreset('partidas')" class="px-2.5 py-1.5 text-xs rounded-lg bg-[#18233C] hover:bg-[#203053] text-slate-200 border border-[#273860] transition flex items-center justify-center gap-1.5 font-medium">
+              <i class="fa-solid fa-flag-checkered text-emerald-400"></i> N° Rondas (3, 5, 7, 10)
+            </button>
+            <button onclick="loadPreset('altas')" class="px-2.5 py-1.5 text-xs rounded-lg bg-[#18233C] hover:bg-[#203053] text-slate-200 border border-[#273860] transition flex items-center justify-center gap-1.5 font-medium">
+              <i class="fa-solid fa-fire text-rose-400"></i> Fuertes (10, 15, 20, 30, 40, 50)
+            </button>
+            <button onclick="loadPreset('jugadores')" class="px-2.5 py-1.5 text-xs rounded-lg bg-[#18233C] hover:bg-[#203053] text-slate-200 border border-[#273860] transition flex items-center justify-center gap-1.5 font-medium">
+              <i class="fa-solid fa-users text-cyan-400"></i> Los GO (Nombres)
+            </button>
+          </div>
+        </div>
+
+        <!-- Opciones editables de la ruleta -->
+        <div class="w-full mt-3 pt-3 border-t border-[#1C2C4A]">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-semibold text-slate-300">Números actuales en la rueda:</label>
+            <span id="itemsCountBadge" class="text-[11px] text-slate-400 bg-[#162138] px-2 py-0.5 rounded">7 números</span>
+          </div>
+
+          <!-- Add new item input -->
+          <div class="flex gap-2 mb-2.5">
+            <div class="relative flex-1">
+              <input type="text" id="inputNewItem" placeholder="Ej: 8, 10, 15, 20..." class="w-full bg-[#0D1424] border border-[#223356] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400" onkeydown="if(event.key==='Enter') addWheelItem()">
+            </div>
+            <button onclick="addWheelItem()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i> Agregar
+            </button>
+          </div>
+
+          <!-- Tag chips list -->
+          <div id="wheelChipsContainer" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1 bg-[#0D1424]/60 rounded-lg border border-[#1B2844]">
+            <!-- Dynamic tags -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Card: Amigos / Jugadores (LOS GO) -->
+      <section class="glass-card rounded-2xl p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-users text-cyan-400"></i>
+            <h2 class="font-bold text-slate-100 text-sm sm:text-base">Jugadores: PARA LOS GO</h2>
+          </div>
+          <span id="playersCountBadge" class="text-xs bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 px-2.5 py-0.5 rounded-full font-bold">
+            4 jugadores
+          </span>
+        </div>
+
+        <!-- Add player -->
+        <div class="flex gap-2 mb-3">
+          <input type="text" id="inputPlayerName" placeholder="Agregar otro amigo si juegan más..." class="flex-1 bg-[#0D1424] border border-[#223356] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400" onkeydown="if(event.key==='Enter') addPlayer()">
+          <button onclick="addPlayer()" class="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-user-plus"></i> Añadir
+          </button>
+        </div>
+
+        <!-- Players List -->
+        <div id="playersList" class="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
+          <!-- Dynamic Player Item -->
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT COLUMN: REGISTRAR PARTIDA + TABLA + DEUDAS (7 cols) -->
+    <div class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- Card: Registrar Partida & Regla Exacta -->
+      <section class="glass-card rounded-2xl p-5 relative border-amber-500/20">
+        <div class="flex items-center justify-between mb-3 border-b border-[#1C2C4A] pb-3">
+          <div class="flex items-center gap-2.5">
+            <span id="gameRoundBadgeIcon" class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-sm">
+              ⚽
+            </span>
+            <div>
+              <h2 class="font-bold text-slate-100 text-sm sm:text-base">Registrar Resultado de la Partida</h2>
+              <p class="text-[11px] text-slate-400">Asigna los puestos de la ronda y calcula ganancias/pérdidas</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs text-slate-400 font-medium">Moneda:</span>
+            <select id="currencySelect" onchange="changeCurrency(this.value)" class="bg-[#0D1424] text-amber-300 border border-[#223356] rounded-md px-2 py-1 text-xs focus:outline-none focus:border-amber-400 font-bold">
+              <option value="S/" selected>S/ Soles (PEN)</option>
+              <option value="$">$ Dólar (USD)</option>
+              <option value="€">€ Euros (EUR)</option>
+              <option value="MXN$">MXN$ Pesos</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Cuadro de Apuesta y Regla Oficial -->
+        <div class="bg-[#0D1424]/95 p-3.5 rounded-xl border border-[#1E2E4E] mb-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-200 mb-1">
+                Monto que indicó la Ruleta (Apuesta Base):
+              </label>
+              <div class="relative w-44">
+                <span class="absolute left-3 top-2 text-xs font-bold text-amber-400 currency-symbol">S/</span>
+                <input type="number" id="inputRoundBet" value="10" min="0.5" step="0.5" class="w-full bg-[#141F36] border border-[#273B63] rounded-lg pl-8 pr-3 py-1.5 text-sm text-white font-black focus:outline-none focus:border-amber-400" oninput="recalcRoundPreset()">
+              </div>
+            </div>
+
+            <div class="bg-[#121B2F] p-2.5 rounded-lg border border-[#202E4E] text-xs">
+              <span class="text-slate-400 block text-[11px] font-semibold mb-0.5">Regla Oficial de PARA LOS GO:</span>
+              <div class="text-amber-300 font-mono text-[11px]">
+                🥇 1º: +Monto | 🥈 2º: +Mitad | 🥉 3º: -Mitad | 💀 4º: -Monto
+              </div>
+            </div>
+          </div>
+
+          <!-- Payout Preview Badge Strip -->
+          <div class="mt-3 pt-2.5 border-t border-[#192742]">
+            <span class="text-[11px] font-bold text-slate-300 block mb-1.5">
+              Desglose en vivo para esta partida:
+            </span>
+            <div class="flex flex-wrap items-center gap-2" id="payoutPillsPreview">
+              <!-- Dynamic payout chips per position -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Selectores de posiciones (1º, 2º, 3º, 4º...) -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-ranking-star text-amber-400"></i> ¿Quién quedó en cada puesto?
+            </h3>
+            <button onclick="randomizeMatchPositions()" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium underline underline-offset-2">
+              <i class="fa-solid fa-shuffle"></i> Barajar al azar
+            </button>
+          </div>
+
+          <div id="matchPositionsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <!-- Dynamic Position Slots -->
+          </div>
+        </div>
+
+        <!-- Preview de Balance de la Partida -->
+        <div id="roundBalanceCheck" class="text-xs p-2.5 rounded-lg mb-4 flex items-center justify-between bg-emerald-950/20 border border-emerald-500/20 text-emerald-300">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-scale-balanced text-emerald-400"></i>
+            <span>Balance neto de la ronda:</span>
+          </span>
+          <span id="roundNetSum" class="font-bold text-emerald-400">S/ 0.00 (Equilibrio Perfecto)</span>
+        </div>
+
+        <!-- Action Button -->
+        <button id="btnSaveMatch" onclick="saveMatchRound()" class="w-full py-3 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/25 active:scale-[0.99] transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-circle-check text-base"></i>
+          <span>REGISTRAR RESULTADO DE ESTA PARTIDA</span>
+        </button>
+      </section>
+
+      <!-- Card: Tabla de Clasificación / Leaderboard -->
+      <section class="glass-card rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-medal text-yellow-400 text-lg"></i>
+            <div>
+              <h2 class="font-bold text-slate-100 text-base">Tabla de Clasificación: PARA LOS GO</h2>
+              <p class="text-xs text-slate-400">Suma total acumulada de ganancias (+) y pérdidas (-)</p>
+            </div>
+          </div>
+          <!-- Botón Generar PDF Limpio -->
+          <button onclick="downloadCleanPDF()" class="text-xs px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-lg transition flex items-center gap-1.5 font-bold shadow">
+            <i class="fa-solid fa-file-pdf text-rose-400"></i> Generar PDF
+          </button>
+        </div>
+
+        <!-- Table responsive wrapper -->
+        <div class="overflow-x-auto rounded-xl border border-[#1C2C4A]">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-[#0D1527] text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-[#1C2C4A]">
+              <tr>
+                <th class="py-2.5 px-3 text-center w-12">#</th>
+                <th class="py-2.5 px-3">Amigo (Los GO)</th>
+                <th class="py-2.5 px-3 text-center">Partidas</th>
+                <th class="py-2.5 px-3 text-center">Podios 🥇/🥈</th>
+                <th class="py-2.5 px-3 text-right">Dinero Ganado / Perdido</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTbody" class="divide-y divide-[#17243E] bg-[#0E1628]/60">
+              <!-- Dynamic Rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Card: Liquidación Inteligente ("¿Quién le paga a quién?") -->
+      <section class="glass-card rounded-2xl p-5 border-emerald-500/20">
+        <div class="flex items-center justify-between mb-3 border-b border-[#1C2C4A] pb-3">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-hand-holding-dollar"></i>
+            </span>
+            <div>
+              <h2 class="font-bold text-slate-100 text-base">Cuentas Claras: ¿Quién le paga a quién?</h2>
+              <p class="text-[11px] text-slate-400">Transferencias directas y exactas para saldar cuentas al final</p>
+            </div>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+            Cero Enredos
+          </span>
+        </div>
+
+        <div id="settlementsList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- Dynamic Debt Settlement Cards -->
+        </div>
+      </section>
+
+      <!-- Card: Historial de Partidas -->
+      <section class="glass-card rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+            <h2 class="font-bold text-slate-200 text-sm">Historial de Partidas</h2>
+          </div>
+          <span id="roundsCountHistory" class="text-xs text-slate-400 font-semibold">0 rondas</span>
+        </div>
+
+        <div id="roundsHistoryList" class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+          <!-- Dynamic Round History -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Winner Modal Pop-up -->
+  <div id="resultModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-card rounded-2xl p-6 max-w-sm w-full border border-amber-500/40 text-center animate-pop relative">
+      <button onclick="closeResultModal()" class="absolute right-4 top-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 mx-auto flex items-center justify-center text-slate-950 text-2xl shadow-lg shadow-amber-500/40 mb-3 animate-bounce">
+        <i class="fa-solid fa-coins"></i>
+      </div>
+
+      <span class="text-xs font-bold uppercase tracking-widest text-amber-400">¡PARA LOS GO - RULETA!</span>
+      <h3 id="modalWinnerNumber" class="text-4xl font-black text-white my-2 tracking-tight">10</h3>
+      <p id="modalWinnerDetail" class="text-xs text-slate-300 mb-5">
+        <!-- Dynamic detail text -->
+      </p>
+
+      <div class="flex flex-col gap-2">
+        <button id="btnApplyAsBet" onclick="applyWonValue('bet')" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-coins"></i> Usar como Apuesta de la Partida
+        </button>
+        <button id="btnApplyAsRounds" onclick="applyWonValue('rounds')" class="w-full py-2.5 rounded-xl bg-[#1C2C4A] hover:bg-[#273D68] text-slate-200 font-semibold text-xs border border-[#2F4777] transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-flag-checkered"></i> Fijar como Meta de Partidas
+        </button>
+        <button onclick="closeResultModal()" class="w-full py-2 text-slate-400 hover:text-slate-200 text-xs font-medium">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-[#15223C] border border-amber-500/30 text-slate-100 px-4 py-2.5 rounded-xl text-xs font-medium shadow-xl shadow-black/60 flex items-center gap-2.5 transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-amber-400"></i>
+    <span id="toastMsg">Mensaje de notificación</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-[#141F36] py-4 text-center text-xs text-slate-500 mt-auto">
+    PARA LOS GO &bull; FIFA, SMASH BROS ULTIMATE, MARIO PARTY &bull; Sistema Oficial &copy; 2026.
+  </footer>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    /* =====================================================================
+       ESTADO GLOBAL DE LA APLICACIÓN - PARA LOS GO
+       ===================================================================== */
+    const STORAGE_KEY = 'RULETA_AMIGOS_APP_STATE_V6_PRO';
+
+    const DEFAULT_PLAYERS = [
+      { id: 'p1', name: 'CARLOS', color: '#F59E0B' },
+      { id: 'p2', name: 'EDGAR', color: '#10B981' },
+      { id: 'p3', name: 'JOSEPH', color: '#3B82F6' },
+      { id: 'p4', name: 'EDU', color: '#EC4899' }
+    ];
+
+    const GAME_CONFIGS = {
+      fifa: {
+        id: 'fifa',
+        name: 'FIFA / EA SPORTS FC',
+        shortName: 'FIFA',
+        emoji: '⚽',
+        color: '#10B981'
+      },
+      smash: {
+        id: 'smash',
+        name: 'SUPER SMASH BROS. ULTIMATE',
+        shortName: 'SMASH BROS',
+        emoji: '🥊',
+        color: '#EF4444'
+      },
+      marioparty: {
+        id: 'marioparty',
+        name: 'MARIO PARTY SUPERSTARS',
+        shortName: 'MARIO PARTY',
+        emoji: '🎲',
+        color: '#F59E0B'
+      }
+    };
+
+    let appState = {
+      appName: 'PARA LOS GO',
+      currentGame: 'fifa',
+      currency: 'S/',
+      soundEnabled: true,
+      targetRounds: null,
+      currentBet: 10,
+      wheelItems: ['4', '6', '8', '10', '12', '16', '20'],
+      players: JSON.parse(JSON.stringify(DEFAULT_PLAYERS)),
+      rounds: []
+    };
+
+    const AVATAR_COLORS = [
+      '#F59E0B', '#10B981', '#3B82F6', '#EC4899', '#8B5CF6', 
+      '#06B6D4', '#EF4444', '#14B8A6', '#F97316', '#6366F1'
+    ];
+
+    /* =====================================================================
+       SELECTOR VISUAL DE JUEGO (FIFA, SMASH, MARIO PARTY)
+       ===================================================================== */
+    function selectGame(gameId) {
+      if (!GAME_CONFIGS[gameId]) return;
+      appState.currentGame = gameId;
+      saveState();
+      updateGameUI(gameId);
+      showToast(`Modo cambiado a ${GAME_CONFIGS[gameId].name}`, 'fa-gamepad');
+    }
+
+    function updateGameUI(gameId) {
+      const cfg = GAME_CONFIGS[gameId] || GAME_CONFIGS.fifa;
+
+      // Actualizar tags en header y stats
+      document.getElementById('activeGameTag').innerText = cfg.shortName;
+      document.getElementById('activeGameTag').className = `text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+        gameId === 'fifa' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+        gameId === 'smash' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
+        'bg-amber-500/20 text-amber-300 border-amber-500/30'
+      }`;
+
+      document.getElementById('statGameLabel').innerText = cfg.shortName;
+      document.getElementById('statGameLabel').className = `font-bold px-2 py-0.5 rounded border ${
+        gameId === 'fifa' ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' :
+        gameId === 'smash' ? 'text-rose-300 bg-rose-500/10 border-rose-500/20' :
+        'text-amber-300 bg-amber-500/10 border-amber-500/20'
+      }`;
+
+      document.getElementById('gameRoundBadgeIcon').innerHTML = cfg.emoji;
+
+      // Actualizar bordes y checks en las tarjetas de juego
+      ['fifa', 'smash', 'marioparty'].forEach(g => {
+        const card = document.getElementById(`card_${g}`);
+        const check = document.getElementById(`check_${g}`);
+        if (!card || !check) return;
+
+        if (g === gameId) {
+          check.classList.remove('hidden');
+          if (g === 'fifa') {
+            card.className = 'game-cover-card cursor-pointer rounded-2xl border-2 border-emerald-500 bg-[#0E1628] h-36 sm:h-44 group shadow-xl shadow-emerald-950/40 relative scale-[1.02] ring-2 ring-emerald-500/50';
+          } else if (g === 'smash') {
+            card.className = 'game-cover-card cursor-pointer rounded-2xl border-2 border-rose-500 bg-[#0E1628] h-36 sm:h-44 group shadow-xl shadow-rose-950/40 relative scale-[1.02] ring-2 ring-rose-500/50';
+          } else {
+            card.className = 'game-cover-card cursor-pointer rounded-2xl border-2 border-amber-500 bg-[#0E1628] h-36 sm:h-44 group shadow-xl shadow-amber-950/40 relative scale-[1.02] ring-2 ring-amber-500/50';
+          }
+        } else {
+          check.classList.add('hidden');
+          card.className = 'game-cover-card cursor-pointer rounded-2xl border-2 border-transparent bg-[#0E1628] h-36 sm:h-44 group shadow-md shadow-black/60 relative opacity-70 hover:opacity-100 hover:border-slate-500';
+        }
+      });
+    }
+
+    /* =====================================================================
+       GENERACIÓN PROFESIONAL DE REPORTES EN PDF (ESTRICTAMENTE EN CUADROS Y TABLAS, SIN IMÁGENES)
+       ===================================================================== */
+    function downloadCleanPDF() {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('Error: La librería jsPDF no se cargó correctamente. Asegúrate de tener conexión o refresca la página.');
+        return;
+      }
+
+      const gameId = appState.currentGame || 'fifa';
+      const gameCfg = GAME_CONFIGS[gameId] || GAME_CONFIGS.fifa;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const primaryColor = [15, 25, 45];      // Azul noche sobrio y formal
+      const accentGold = [245, 158, 11];      // Acento dorado
+
+      // Header Banner Formal
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, 210, 36, 'F');
+
+      // Línea de acento
+      doc.setFillColor(...accentGold);
+      doc.rect(0, 36, 210, 2, 'F');
+
+      // Títulos en texto nítido
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.setTextColor(245, 158, 11);
+      doc.text('PARA LOS GO', 14, 16);
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text(`REPORTE OFICIAL DE APUESTAS & CLASIFICACIÓN | DISCIPLINA: ${gameCfg.name}`, 14, 23);
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(200, 210, 225);
+      doc.text(`Participantes: CARLOS, EDGAR, JOSEPH, EDU | Fecha de emisión: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, 14, 30);
+
+      let currentY = 46;
+
+      // Resumen rápido
+      const stats = computePlayerStats();
+      const numRounds = appState.rounds.length;
+      const topWinner = stats.length > 0 && numRounds > 0 ? stats[0] : null;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...primaryColor);
+      doc.text('1. RESUMEN DE LA COMPETICIÓN', 14, currentY);
+      currentY += 4;
+
+      const summaryRows = [
+        ['Videojuego Oficial:', `${gameCfg.name}`],
+        ['Total de Partidas Jugadas:', `${numRounds} rondas completadas`],
+        ['Moneda de Juego:', `${appState.currency} (Soles)`],
+        ['Regla de Reparto Aplicada:', '1º (+Monto Total) | 2º (+Mitad) | 3º (-Mitad) | 4º (-Monto Total)'],
+        ['Campeón de la Noche:', topWinner ? `${topWinner.player.name} con un balance de +${appState.currency} ${topWinner.totalNet.toFixed(2)}` : 'Sin partidas registradas']
+      ];
+
+      doc.autoTable({
+        startY: currentY,
+        body: summaryRows,
+        theme: 'plain',
+        styles: { fontSize: 8.5, cellPadding: 1.8, textColor: [30, 41, 59] },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 55 },
+          1: { cellWidth: 125 }
+        }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      // CUADRO 1: TABLA DE CLASIFICACIÓN GENERAL
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...primaryColor);
+      doc.text('2. TABLA DE CLASIFICACIÓN GENERAL (LEADERBOARD)', 14, currentY);
+      currentY += 4;
+
+      const leaderboardData = stats.map((s, idx) => {
+        const pos = idx + 1;
+        const sign = s.totalNet > 0 ? '+' : '';
+        return [
+          `${pos}º`,
+          s.player.name,
+          `${s.roundsPlayed}`,
+          `${s.firstPlaces}`,
+          `${s.secondPlaces}`,
+          `${sign}${appState.currency} ${s.totalNet.toFixed(2)}`
+        ];
+      });
+
+      doc.autoTable({
+        startY: currentY,
+        head: [['Puesto', 'Amigo (Los GO)', 'Partidas', '1º Lugares', '2º Lugares', 'Balance Neto Ganado/Perdido']],
+        body: leaderboardData.length > 0 ? leaderboardData : [['-', 'Sin partidas registradas', '-', '-', '-', '-']],
+        theme: 'grid',
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+          fontSize: 8.5
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2.8,
+          textColor: [30, 41, 59]
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 18, fontStyle: 'bold' },
+          1: { fontStyle: 'bold' },
+          2: { halign: 'center' },
+          3: { halign: 'center' },
+          4: { halign: 'center' },
+          5: { halign: 'right', fontStyle: 'bold' }
+        },
+        didParseCell: function(data) {
+          if (data.section === 'body' && data.column.index === 5) {
+            const rawVal = data.cell.raw;
+            if (rawVal.includes('+')) {
+              data.cell.styles.textColor = [16, 140, 90]; // verde ganancia
+            } else if (rawVal.includes('-')) {
+              data.cell.styles.textColor = [200, 30, 30]; // rojo pérdida
+            }
+          }
+        }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      // CUADRO 2: LIQUIDACIÓN DE CUENTAS (QUIÉN LE PAGA A QUIÉN)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...primaryColor);
+      doc.text('3. LIQUIDACIÓN DE CUENTAS: ¿QUIÉN LE PAGA A QUIÉN?', 14, currentY);
+      currentY += 4;
+
+      const txs = calculateDebtSettlement();
+      const settlementData = txs.map(t => [
+        t.from,
+        'debe transferir a',
+        t.to,
+        `${appState.currency} ${t.amount.toFixed(2)}`
+      ]);
+
+      if (settlementData.length === 0) {
+        settlementData.push(['TODOS', 'Cuentas 100% equilibradas (nadie debe a nadie)', 'TODOS', `${appState.currency} 0.00`]);
+      }
+
+      doc.autoTable({
+        startY: currentY,
+        head: [['Deudor (Paga)', 'Acción Requerida', 'Acreedor (Recibe)', 'Monto a Transferir']],
+        body: settlementData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [30, 41, 59],
+          textColor: [245, 158, 11],
+          fontStyle: 'bold',
+          halign: 'center',
+          fontSize: 8.5
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2.8,
+          textColor: [30, 41, 59]
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold', halign: 'center', textColor: [180, 20, 20] },
+          1: { halign: 'center', fontStyle: 'italic', textColor: [100, 116, 139] },
+          2: { fontStyle: 'bold', halign: 'center', textColor: [16, 140, 90] },
+          3: { halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] }
+        }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      if (currentY > 230 && appState.rounds.length > 0) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      // CUADRO 3: HISTORIAL DE RONDAS
+      if (appState.rounds.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(...primaryColor);
+        doc.text('4. HISTORIAL DETALLADO DE PARTIDAS JUGADAS', 14, currentY);
+        currentY += 4;
+
+        const roundsData = appState.rounds.map(r => {
+          const p1 = r.positions.find(p => p.rank === 1);
+          const p2 = r.positions.find(p => p.rank === 2);
+          const p3 = r.positions.find(p => p.rank === 3);
+          const p4 = r.positions.find(p => p.rank === 4);
+
+          return [
+            `#${r.roundNumber}`,
+            `${appState.currency} ${r.baseBet}`,
+            p1 ? `${p1.playerName} (+${p1.netAmount})` : '-',
+            p2 ? `${p2.playerName} (+${p2.netAmount})` : '-',
+            p3 ? `${p3.playerName} (${p3.netAmount})` : '-',
+            p4 ? `${p4.playerName} (${p4.netAmount})` : '-'
+          ];
+        });
+
+        doc.autoTable({
+          startY: currentY,
+          head: [['Ronda', 'Ruleta', '1º Lugar (+Monto)', '2º Lugar (+Mitad)', '3º Lugar (-Mitad)', '4º Lugar (-Monto)']],
+          body: roundsData,
+          theme: 'grid',
+          headStyles: {
+            fillColor: primaryColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            halign: 'center',
+            fontSize: 8
+          },
+          styles: {
+            fontSize: 7.5,
+            cellPadding: 2.2
+          },
+          columnStyles: {
+            0: { halign: 'center', fontStyle: 'bold', cellWidth: 16 },
+            1: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
+            2: { halign: 'center' },
+            3: { halign: 'center' },
+            4: { halign: 'center' },
+            5: { halign: 'center' }
+          }
+        });
+      }
+
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(140, 150, 160);
+        doc.text(`PARA LOS GO © 2026 - Reporte Oficial de Partidas | Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+      }
+
+      const fileName = `PARA_LOS_GO_Reporte_${gameCfg.shortName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      doc.save(fileName);
+      showToast('¡Reporte PDF descargado!', 'fa-file-pdf');
+    }
+
+    /* =====================================================================
+       SÍNTESIS DE SONIDO NATIVO (WEB AUDIO API - 100% OFFLINE)
+       ===================================================================== */
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playTickSound() {
+      if (!appState.soundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(650, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.035);
+
+        gain.gain.setValueAtTime(0.14, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.035);
+      } catch (e) {
+        console.warn('Audio tick error:', e);
+      }
+    }
+
+    function playWinFanfare() {
+      if (!appState.soundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const startTime = ctx.currentTime + (idx * 0.09);
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.18, startTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + 0.35);
+        });
+      } catch (e) {
+        console.warn('Fanfare error:', e);
+      }
+    }
+
+    function playCashSound() {
+      if (!appState.soundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(987.77, ctx.currentTime);
+        osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
+
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      } catch (e) {
+        console.warn('Cash sound error:', e);
+      }
+    }
+
+    function toggleMute() {
+      appState.soundEnabled = !appState.soundEnabled;
+      saveState();
+      updateSoundIcon();
+      showToast(appState.soundEnabled ? 'Sonidos activados' : 'Sonidos silenciados', 'fa-volume-high');
+    }
+
+    function updateSoundIcon() {
+      const icon = document.getElementById('soundIcon');
+      const btn = document.getElementById('btnSoundToggle');
+      if (appState.soundEnabled) {
+        icon.className = 'fa-solid fa-volume-high text-amber-400';
+        btn.classList.remove('opacity-50');
+      } else {
+        icon.className = 'fa-solid fa-volume-xmark text-slate-500';
+        btn.classList.add('opacity-50');
+      }
+    }
+
+    /* =====================================================================
+       SISTEMA DE RULETA (CANVAS NATIVO)
+       ===================================================================== */
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+    let currentAngle = 0;
+    let isSpinning = false;
+    let lastTickAngle = 0;
+    let lastWinnerValue = null;
+
+    const WHEEL_COLORS = [
+      '#EF4444', '#F59E0B', '#10B981', '#06B6D4', 
+      '#3B82F6', '#8B5CF6', '#EC4899', '#F97316',
+      '#14B8A6', '#6366F1'
+    ];
+
+    function drawWheel() {
+      const items = appState.wheelItems;
+      const numItems = items.length;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = centerX - 12;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (numItems === 0) {
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Agrega números', centerX, centerY);
+        return;
+      }
+
+      const arc = (2 * Math.PI) / numItems;
+
+      for (let i = 0; i < numItems; i++) {
+        const angle = currentAngle + (i * arc);
+        ctx.beginPath();
+        ctx.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length];
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, angle, angle + arc);
+        ctx.lineTo(centerX, centerY);
+        ctx.fill();
+
+        ctx.strokeStyle = '#0B0F19';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 4;
+        ctx.translate(centerX, centerY);
+        ctx.rotate(angle + arc / 2);
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        const fontSize = numItems > 12 ? 12 : (numItems > 8 ? 14 : 16);
+        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+
+        let text = items[i];
+        if (text.length > 12) text = text.substring(0, 10) + '…';
+        ctx.fillText(text, radius - 20, 0);
+        ctx.restore();
+      }
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius + 4, 0, 2 * Math.PI);
+      ctx.strokeStyle = '#273860';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      for (let i = 0; i < numItems * 2; i++) {
+        const pinAngle = (i * Math.PI) / numItems;
+        const px = centerX + (radius + 4) * Math.cos(pinAngle);
+        const py = centerY + (radius + 4) * Math.sin(pinAngle);
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5, 0, 2 * Math.PI);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 34, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0B0F19';
+      ctx.fill();
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    function spinWheel() {
+      if (isSpinning) return;
+      if (appState.wheelItems.length < 2) {
+        showToast('Agrega al menos 2 opciones a la ruleta', 'fa-triangle-exclamation');
+        return;
+      }
+
+      getAudioContext();
+      isSpinning = true;
+      document.getElementById('btnSpin').disabled = true;
+
+      const numItems = appState.wheelItems.length;
+      const arc = (2 * Math.PI) / numItems;
+
+      const extraSpins = 5 + Math.random() * 3;
+      const randomOffset = Math.random() * (2 * Math.PI);
+      const totalRotation = (extraSpins * 2 * Math.PI) + randomOffset;
+
+      const startAngle = currentAngle;
+      const targetAngle = startAngle + totalRotation;
+      const duration = 4000 + Math.random() * 1000;
+      const startTime = performance.now();
+      lastTickAngle = startAngle;
+
+      function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+      }
+
+      function animate(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = easeOutCubic(progress);
+
+        currentAngle = startAngle + (targetAngle - startAngle) * ease;
+
+        const currentSectorIndex = Math.floor((currentAngle) / arc);
+        const lastSectorIndex = Math.floor((lastTickAngle) / arc);
+        if (currentSectorIndex !== lastSectorIndex) {
+          playTickSound();
+          lastTickAngle = currentAngle;
+        }
+
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isSpinning = false;
+          document.getElementById('btnSpin').disabled = false;
+          onWheelStop();
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function onWheelStop() {
+      const items = appState.wheelItems;
+      const numItems = items.length;
+      const arc = (2 * Math.PI) / numItems;
+
+      let normalizedAngle = (1.5 * Math.PI - (currentAngle % (2 * Math.PI))) % (2 * Math.PI);
+      if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI;
+
+      const winnerIndex = Math.floor(normalizedAngle / arc) % numItems;
+      const winner = items[winnerIndex];
+      lastWinnerValue = winner;
+
+      playWinFanfare();
+      triggerConfetti();
+      openResultModal(winner);
+    }
+
+    function openResultModal(value) {
+      const modal = document.getElementById('resultModal');
+      const numEl = document.getElementById('modalWinnerNumber');
+      const detailEl = document.getElementById('modalWinnerDetail');
+
+      numEl.innerText = value;
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        const half = num / 2;
+        detailEl.innerHTML = `
+          ¡La ruleta marcó <strong>${num} ${appState.currency}</strong>!<br>
+          <span class="text-emerald-300">🥇 1º gana: +${num}</span> &bull; 
+          <span class="text-emerald-300">🥈 2º gana: +${half}</span><br>
+          <span class="text-rose-300">🥉 3º pierde: -${half}</span> &bull; 
+          <span class="text-rose-300">💀 4º pierde: -${num}</span>
+        `;
+      } else {
+        detailEl.innerText = `¡Ha salido: "${value}"!`;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeResultModal() {
+      document.getElementById('resultModal').classList.add('hidden');
+    }
+
+    function applyWonValue(type) {
+      if (!lastWinnerValue) return;
+      const num = parseFloat(lastWinnerValue);
+
+      if (isNaN(num)) {
+        showToast(`"${lastWinnerValue}" no es un número`, 'fa-triangle-exclamation');
+        closeResultModal();
+        return;
+      }
+
+      if (type === 'bet') {
+        document.getElementById('inputRoundBet').value = num;
+        recalcRoundPreset();
+        showToast(`Apuesta fijada en ${appState.currency} ${num}`, 'fa-coins');
+      } else if (type === 'rounds') {
+        appState.targetRounds = parseInt(num);
+        saveState();
+        updateStats();
+        showToast(`Meta de la noche: ${num} partidas`, 'fa-flag-checkered');
+      }
+      closeResultModal();
+    }
+
+    function renderWheelChips() {
+      const container = document.getElementById('wheelChipsContainer');
+      const countBadge = document.getElementById('itemsCountBadge');
+      container.innerHTML = '';
+      countBadge.innerText = `${appState.wheelItems.length} números`;
+
+      appState.wheelItems.forEach((item, index) => {
+        const chip = document.createElement('div');
+        chip.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#16223B] text-slate-200 border border-[#23355A]';
+        chip.innerHTML = `
+          <span>${item}</span>
+          <button onclick="removeWheelItem(${index})" class="text-slate-400 hover:text-rose-400 transition" title="Quitar">
+            <i class="fa-solid fa-xmark text-[10px]"></i>
+          </button>
+        `;
+        container.appendChild(chip);
+      });
+
+      drawWheel();
+    }
+
+    function addWheelItem() {
+      const input = document.getElementById('inputNewItem');
+      const val = input.value.trim();
+      if (!val) return;
+
+      appState.wheelItems.push(val);
+      input.value = '';
+      saveState();
+      renderWheelChips();
+    }
+
+    function removeWheelItem(index) {
+      appState.wheelItems.splice(index, 1);
+      saveState();
+      renderWheelChips();
+    }
+
+    function loadPreset(type) {
+      if (type === 'apuestas') {
+        appState.wheelItems = ['4', '6', '8', '10', '12', '16', '20'];
+        document.getElementById('wheelModeBadge').innerText = 'Apuestas (Soles)';
+      } else if (type === 'partidas') {
+        appState.wheelItems = ['3', '5', '7', '10', '12', '15'];
+        document.getElementById('wheelModeBadge').innerText = 'Rondas';
+      } else if (type === 'altas') {
+        appState.wheelItems = ['10', '15', '20', '30', '40', '50'];
+        document.getElementById('wheelModeBadge').innerText = 'Apuestas Fuertes';
+      } else if (type === 'jugadores') {
+        appState.wheelItems = appState.players.map(p => p.name);
+        document.getElementById('wheelModeBadge').innerText = 'Los GO';
+      }
+      saveState();
+      renderWheelChips();
+      showToast('Plantilla cargada en la ruleta', 'fa-check');
+    }
+
+    /* =====================================================================
+       GESTIÓN DE JUGADORES (CARLOS, EDGAR, JOSEPH, EDU)
+       ===================================================================== */
+    function renderPlayers() {
+      const list = document.getElementById('playersList');
+      const badge = document.getElementById('playersCountBadge');
+      list.innerHTML = '';
+      badge.innerText = `${appState.players.length} jugadores`;
+
+      if (appState.players.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-4 text-xs text-slate-500 italic">
+            No hay jugadores. Haz clic en 'Restablecer Los GO'.
+          </div>
+        `;
+        renderMatchPositionSlots();
+        renderLeaderboard();
+        return;
+      }
+
+      appState.players.forEach((p, idx) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 rounded-lg bg-[#0E1628] border border-[#1C2C4A] hover:border-[#273D68] transition';
+        item.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-slate-950" style="background-color: ${p.color}">
+              ${idx + 1}
+            </span>
+            <span class="text-xs font-bold text-slate-100">${p.name}</span>
+          </div>
+          <button onclick="removePlayer('${p.id}')" class="text-slate-500 hover:text-rose-400 p-1 text-xs transition" title="Eliminar jugador">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        `;
+        list.appendChild(item);
+      });
+
+      renderMatchPositionSlots();
+      renderLeaderboard();
+      updateDebtSettlements();
+      updateStats();
+    }
+
+    function addPlayer() {
+      const input = document.getElementById('inputPlayerName');
+      const name = input.value.trim().toUpperCase();
+      if (!name) return;
+
+      const exists = appState.players.some(p => p.name.toUpperCase() === name);
+      if (exists) {
+        showToast(`"${name}" ya está en la lista`, 'fa-triangle-exclamation');
+        return;
+      }
+
+      const color = AVATAR_COLORS[appState.players.length % AVATAR_COLORS.length];
+      const newPlayer = {
+        id: 'p_' + Date.now() + '_' + Math.floor(Math.random()*100),
+        name: name,
+        color: color
+      };
+
+      appState.players.push(newPlayer);
+      input.value = '';
+      saveState();
+      renderPlayers();
+      showToast(`${name} añadido a PARA LOS GO`, 'fa-user-check');
+    }
+
+    function removePlayer(id) {
+      const p = appState.players.find(x => x.id === id);
+      if (confirm(`¿Quitar a ${p?.name || 'este jugador'} del grupo?`)) {
+        appState.players = appState.players.filter(x => x.id !== id);
+        saveState();
+        renderPlayers();
+      }
+    }
+
+    /* =====================================================================
+       CÁLCULO EXACTO DE APUESTAS:
+       1er lugar: gana X (10)
+       2do lugar: gana X/2 (5)
+       3er lugar: pierde X/2 (-5)
+       4to lugar: pierde X (-10)
+       ===================================================================== */
+    function getExactDistribution(X, numPlayers) {
+      const amounts = new Array(numPlayers).fill(0);
+      if (numPlayers < 2) return amounts;
+
+      const half = Math.round((X / 2) * 100) / 100;
+
+      if (numPlayers === 4) {
+        amounts[0] = +X;
+        amounts[1] = +half;
+        amounts[2] = -half;
+        amounts[3] = -X;
+      }
+      else if (numPlayers === 2) {
+        amounts[0] = +X;
+        amounts[1] = -X;
+      }
+      else if (numPlayers === 3) {
+        amounts[0] = +X;
+        amounts[1] = 0;
+        amounts[2] = -X;
+      }
+      else if (numPlayers === 5) {
+        amounts[0] = +X;
+        amounts[1] = +half;
+        amounts[2] = 0;
+        amounts[3] = -half;
+        amounts[4] = -X;
+      }
+      else {
+        const mid = (numPlayers - 1) / 2;
+        let sum = 0;
+        for (let i = 0; i < numPlayers; i++) {
+          const factor = (mid - i) / mid;
+          amounts[i] = Math.round((X * factor) * 100) / 100;
+          sum += amounts[i];
+        }
+        amounts[0] = Math.round((amounts[0] - sum) * 100) / 100;
+      }
+
+      return amounts;
+    }
+
+    function recalcRoundPreset() {
+      const baseBet = parseFloat(document.getElementById('inputRoundBet').value) || 0;
+      appState.currentBet = baseBet;
+      const numPlayers = appState.players.length;
+
+      const amounts = getExactDistribution(baseBet, numPlayers);
+      renderPayoutPills(amounts);
+      updatePositionNetPreviews();
+      updateStats();
+    }
+
+    function renderPayoutPills(amounts) {
+      const container = document.getElementById('payoutPillsPreview');
+      container.innerHTML = '';
+
+      if (amounts.length === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-500 italic">Añade amigos para ver el reparto</span>`;
+        return;
+      }
+
+      amounts.forEach((amt, idx) => {
+        const pos = idx + 1;
+        const isWin = amt > 0;
+        const isTie = amt === 0;
+        const chip = document.createElement('div');
+        chip.className = `px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 shadow-sm ${
+          isWin ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+          isTie ? 'bg-slate-700/30 text-slate-300 border-slate-600' :
+          'bg-rose-500/15 text-rose-300 border-rose-500/30'
+        }`;
+
+        const medal = pos === 1 ? '🥇 1º Gana' : (pos === 2 ? '🥈 2º Gana' : (pos === 3 ? '🥉 3º Pierde' : `${pos}º Pierde`));
+        const sign = amt > 0 ? '+' : '';
+        chip.innerHTML = `<span>${medal}:</span> <span class="font-black text-sm">${sign}${appState.currency} ${amt.toFixed(2)}</span>`;
+        container.appendChild(chip);
+      });
+    }
+
+    function renderMatchPositionSlots() {
+      const grid = document.getElementById('matchPositionsGrid');
+      grid.innerHTML = '';
+
+      const numPlayers = appState.players.length;
+      if (numPlayers < 2) {
+        grid.innerHTML = `
+          <div class="col-span-full py-6 text-center text-xs text-slate-500 bg-[#0E1628] rounded-xl border border-[#1A2640]">
+            <i class="fa-solid fa-users text-slate-600 text-lg mb-1 block"></i>
+            Añade al menos 2 jugadores para registrar una partida.
+          </div>
+        `;
+        document.getElementById('btnSaveMatch').disabled = true;
+        document.getElementById('btnSaveMatch').classList.add('opacity-50', 'cursor-not-allowed');
+        return;
+      }
+
+      document.getElementById('btnSaveMatch').disabled = false;
+      document.getElementById('btnSaveMatch').classList.remove('opacity-50', 'cursor-not-allowed');
+
+      const baseBet = parseFloat(document.getElementById('inputRoundBet').value) || 0;
+      const amounts = getExactDistribution(baseBet, numPlayers);
+
+      for (let i = 0; i < numPlayers; i++) {
+        const pos = i + 1;
+        const card = document.createElement('div');
+        card.className = 'p-2.5 rounded-xl bg-[#0D1526] border border-[#1D2B4A] flex flex-col gap-1.5';
+
+        const medalIcon = pos === 1 ? '🥇 1er Lugar (Ganador Total)' :
+                          pos === 2 ? '🥈 2do Lugar (Gana la Mitad)' :
+                          pos === 3 ? '🥉 3er Lugar (Pierde la Mitad)' :
+                          `${pos}º Lugar (Pierde el Total)`;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-200">${medalIcon}</span>
+            <span id="posNetPreview_${i}" class="font-black text-xs px-2 py-0.5 rounded ${
+              amounts[i] > 0 ? 'bg-emerald-500/20 text-emerald-300' :
+              amounts[i] === 0 ? 'bg-slate-700/30 text-slate-300' :
+              'bg-rose-500/20 text-rose-300'
+            }">
+              ${amounts[i] > 0 ? '+' : ''}${appState.currency} ${amounts[i].toFixed(2)}
+            </span>
+          </div>
+
+          <select id="selectPosPlayer_${i}" class="w-full bg-[#141F36] border border-[#24365C] rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-bold focus:outline-none focus:border-amber-400" onchange="validateMatchSelections()">
+            <option value="">-- Seleccionar Jugador --</option>
+            ${appState.players.map((p, pIdx) => `
+              <option value="${p.id}" ${pIdx === i ? 'selected' : ''}>${p.name}</option>
+            `).join('')}
+          </select>
+        `;
+        grid.appendChild(card);
+      }
+
+      recalcRoundPreset();
+      validateMatchSelections();
+    }
+
+    function updatePositionNetPreviews() {
+      const baseBet = parseFloat(document.getElementById('inputRoundBet').value) || 0;
+      const numPlayers = appState.players.length;
+      const amounts = getExactDistribution(baseBet, numPlayers);
+
+      for (let i = 0; i < numPlayers; i++) {
+        const el = document.getElementById(`posNetPreview_${i}`);
+        if (el) {
+          const amt = amounts[i];
+          el.innerText = `${amt > 0 ? '+' : ''}${appState.currency} ${amt.toFixed(2)}`;
+          el.className = `font-black text-xs px-2 py-0.5 rounded ${
+            amt > 0 ? 'bg-emerald-500/20 text-emerald-300' :
+            amt === 0 ? 'bg-slate-700/30 text-slate-300' :
+            'bg-rose-500/20 text-rose-300'
+          }`;
+        }
+      }
+
+      const sum = amounts.reduce((a, b) => a + b, 0);
+      const sumEl = document.getElementById('roundNetSum');
+      const checkEl = document.getElementById('roundBalanceCheck');
+      if (Math.abs(sum) < 0.01) {
+        sumEl.innerText = `${appState.currency} 0.00 (Equilibrio Perfecto)`;
+        checkEl.className = 'text-xs p-2.5 rounded-lg mb-4 flex items-center justify-between bg-emerald-950/20 border border-emerald-500/20 text-emerald-300';
+      } else {
+        sumEl.innerText = `${sum > 0 ? '+' : ''}${appState.currency} ${sum.toFixed(2)}`;
+        checkEl.className = 'text-xs p-2.5 rounded-lg mb-4 flex items-center justify-between bg-amber-950/20 border border-amber-500/20 text-amber-300';
+      }
+    }
+
+    function validateMatchSelections() {
+      const numPlayers = appState.players.length;
+      const selectedIds = [];
+      let hasDuplicates = false;
+      let hasEmpty = false;
+
+      for (let i = 0; i < numPlayers; i++) {
+        const sel = document.getElementById(`selectPosPlayer_${i}`);
+        if (!sel) continue;
+        const val = sel.value;
+        if (!val) {
+          hasEmpty = true;
+          sel.classList.add('border-amber-500/60');
+        } else if (selectedIds.includes(val)) {
+          hasDuplicates = true;
+          sel.classList.add('border-rose-500');
+        } else {
+          selectedIds.push(val);
+          sel.classList.remove('border-rose-500', 'border-amber-500/60');
+        }
+      }
+
+      const btn = document.getElementById('btnSaveMatch');
+      if (hasDuplicates || hasEmpty) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function randomizeMatchPositions() {
+      const numPlayers = appState.players.length;
+      if (numPlayers < 2) return;
+
+      const shuffled = [...appState.players].sort(() => 0.5 - Math.random());
+      for (let i = 0; i < numPlayers; i++) {
+        const sel = document.getElementById(`selectPosPlayer_${i}`);
+        if (sel && shuffled[i]) {
+          sel.value = shuffled[i].id;
+        }
+      }
+      validateMatchSelections();
+      showToast('Posiciones barajadas al azar', 'fa-shuffle');
+    }
+
+    function saveMatchRound() {
+      const numPlayers = appState.players.length;
+      if (numPlayers < 2) return;
+
+      const baseBet = parseFloat(document.getElementById('inputRoundBet').value) || 0;
+      const amounts = getExactDistribution(baseBet, numPlayers);
+
+      const positions = [];
+      const selectedIds = new Set();
+
+      for (let i = 0; i < numPlayers; i++) {
+        const sel = document.getElementById(`selectPosPlayer_${i}`);
+        const playerId = sel.value;
+        if (!playerId || selectedIds.has(playerId)) {
+          showToast('Asigna un amigo diferente a cada puesto', 'fa-triangle-exclamation');
+          return;
+        }
+        selectedIds.add(playerId);
+        const player = appState.players.find(p => p.id === playerId);
+
+        positions.push({
+          rank: i + 1,
+          playerId: playerId,
+          playerName: player ? player.name : 'Desconocido',
+          netAmount: amounts[i]
+        });
+      }
+
+      const roundNumber = appState.rounds.length + 1;
+      const roundData = {
+        id: 'r_' + Date.now(),
+        roundNumber: roundNumber,
+        gameId: appState.currentGame,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        baseBet: baseBet,
+        positions: positions
+      };
+
+      appState.rounds.push(roundData);
+      saveState();
+
+      playCashSound();
+      triggerConfetti();
+      showToast(`¡Partida #${roundNumber} guardada en PARA LOS GO!`, 'fa-circle-check');
+
+      renderLeaderboard();
+      updateDebtSettlements();
+      renderRoundsHistory();
+      updateStats();
+
+      if (appState.targetRounds && appState.rounds.length >= appState.targetRounds) {
+        setTimeout(() => {
+          alert(`🏆 ¡META CUMPLIDA EN PARA LOS GO!\nSe completaron las ${appState.targetRounds} partidas acordadas.\nPueden descargar su Reporte en PDF ahora.`);
+        }, 500);
+      }
+    }
+
+    function computePlayerStats() {
+      const statsMap = {};
+      appState.players.forEach(p => {
+        statsMap[p.id] = {
+          player: p,
+          totalNet: 0,
+          roundsPlayed: 0,
+          firstPlaces: 0,
+          secondPlaces: 0,
+          thirdPlaces: 0
+        };
+      });
+
+      appState.rounds.forEach(r => {
+        r.positions.forEach(pos => {
+          if (statsMap[pos.playerId]) {
+            statsMap[pos.playerId].totalNet += pos.netAmount;
+            statsMap[pos.playerId].roundsPlayed += 1;
+            if (pos.rank === 1) statsMap[pos.playerId].firstPlaces += 1;
+            if (pos.rank === 2) statsMap[pos.playerId].secondPlaces += 1;
+            if (pos.rank === 3) statsMap[pos.playerId].thirdPlaces += 1;
+          }
+        });
+      });
+
+      return Object.values(statsMap).sort((a, b) => b.totalNet - a.totalNet);
+    }
+
+    function renderLeaderboard() {
+      const tbody = document.getElementById('leaderboardTbody');
+      tbody.innerHTML = '';
+
+      const ranked = computePlayerStats();
+
+      if (ranked.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-6 text-center text-xs text-slate-500 italic">
+              No hay partidas registradas todavía en PARA LOS GO.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      ranked.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-[#131E35] transition duration-150';
+
+        const pos = index + 1;
+        const medal = pos === 1 ? '🥇' : (pos === 2 ? '🥈' : (pos === 3 ? '🥉' : `${pos}º`));
+        const isWin = item.totalNet > 0;
+        const isTie = Math.abs(item.totalNet) < 0.01;
+        const sign = item.totalNet > 0 ? '+' : '';
+
+        tr.innerHTML = `
+          <td class="py-3 px-3 text-center font-black text-sm ${pos <= 3 ? 'text-amber-400' : 'text-slate-400'}">
+            ${medal}
+          </td>
+          <td class="py-3 px-3">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-slate-950" style="background-color: ${item.player.color}">
+                ${item.player.name.charAt(0)}
+              </span>
+              <span class="font-black text-slate-100 text-xs">${item.player.name}</span>
+            </div>
+          </td>
+          <td class="py-3 px-3 text-center text-slate-300 font-semibold">
+            ${item.roundsPlayed}
+          </td>
+          <td class="py-3 px-3 text-center text-slate-300">
+            <span class="inline-flex items-center gap-1.5 bg-[#141F36] px-2 py-0.5 rounded text-[11px] border border-[#22345C] font-semibold">
+              <span>🥇 ${item.firstPlaces}</span>
+              <span class="text-slate-500">|</span>
+              <span>🥈 ${item.secondPlaces}</span>
+            </span>
+          </td>
+          <td class="py-3 px-3 text-right">
+            <span class="font-black text-xs px-2.5 py-1 rounded-lg ${
+              isWin ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
+              isTie ? 'bg-slate-700/30 text-slate-300' :
+              'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+            }">
+              ${sign}${appState.currency} ${item.totalNet.toFixed(2)}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function calculateDebtSettlement() {
+      const stats = computePlayerStats();
+      
+      const creditors = [];
+      const debtors = [];
+
+      stats.forEach(s => {
+        const net = Math.round(s.totalNet * 100) / 100;
+        if (net > 0.01) {
+          creditors.push({ name: s.player.name, color: s.player.color, amount: net });
+        } else if (net < -0.01) {
+          debtors.push({ name: s.player.name, color: s.player.color, amount: -net });
+        }
+      });
+
+      creditors.sort((a, b) => b.amount - a.amount);
+      debtors.sort((a, b) => b.amount - a.amount);
+
+      const transactions = [];
+      let cIdx = 0;
+      let dIdx = 0;
+
+      while (cIdx < creditors.length && dIdx < debtors.length) {
+        const cred = creditors[cIdx];
+        const deb = debtors[dIdx];
+        const settleAmt = Math.min(cred.amount, deb.amount);
+
+        if (settleAmt > 0.01) {
+          transactions.push({
+            from: deb.name,
+            fromColor: deb.color,
+            to: cred.name,
+            toColor: cred.color,
+            amount: settleAmt
+          });
+        }
+
+        cred.amount = Math.round((cred.amount - settleAmt) * 100) / 100;
+        deb.amount = Math.round((deb.amount - settleAmt) * 100) / 100;
+
+        if (cred.amount <= 0.01) cIdx++;
+        if (deb.amount <= 0.01) dIdx++;
+      }
+
+      return transactions;
+    }
+
+    function updateDebtSettlements() {
+      const list = document.getElementById('settlementsList');
+      list.innerHTML = '';
+
+      if (appState.rounds.length === 0) {
+        list.innerHTML = `
+          <div class="col-span-full py-4 text-center text-xs text-slate-500 italic bg-[#0E1628] rounded-xl border border-[#1A2640]">
+            Juega al menos una partida para ver quién le debe pagar a quién.
+          </div>
+        `;
+        return;
+      }
+
+      const txs = calculateDebtSettlement();
+
+      if (txs.length === 0) {
+        list.innerHTML = `
+          <div class="col-span-full py-4 text-center text-xs text-emerald-400 bg-emerald-950/20 rounded-xl border border-emerald-500/20">
+            <i class="fa-solid fa-handshake mr-1.5"></i>
+            ¡Las cuentas están 100% equilibradas! Nadie le debe a nadie.
+          </div>
+        `;
+        return;
+      }
+
+      txs.forEach(tx => {
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-xl bg-[#0E1628] border border-[#1E2E4E] flex items-center justify-between gap-3 shadow-sm hover:border-emerald-500/40 transition';
+        card.innerHTML = `
+          <div class="flex items-center gap-2 text-xs">
+            <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-slate-950" style="background-color: ${tx.fromColor}">
+              ${tx.from.charAt(0)}
+            </span>
+            <span class="font-black text-rose-300">${tx.from}</span>
+            <i class="fa-solid fa-arrow-right-long text-slate-500 text-xs px-1"></i>
+            <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-slate-950" style="background-color: ${tx.toColor}">
+              ${tx.to.charAt(0)}
+            </span>
+            <span class="font-black text-emerald-300">${tx.to}</span>
+          </div>
+          <div class="font-black text-xs text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/25">
+            ${appState.currency} ${tx.amount.toFixed(2)}
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function renderRoundsHistory() {
+      const list = document.getElementById('roundsHistoryList');
+      const badge = document.getElementById('roundsCountHistory');
+      list.innerHTML = '';
+      badge.innerText = `${appState.rounds.length} rondas`;
+
+      if (appState.rounds.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-4 text-xs text-slate-500 italic">
+            Aún no se han registrado partidas en esta sesión.
+          </div>
+        `;
+        return;
+      }
+
+      const reversed = [...appState.rounds].reverse();
+
+      reversed.forEach(round => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-xl bg-[#0D1526] border border-[#1B2947] flex flex-col gap-2';
+
+        const gameCfg = GAME_CONFIGS[round.gameId] || GAME_CONFIGS.fifa;
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+              <span class="font-black text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                Partida #${round.roundNumber}
+              </span>
+              <span class="text-xs">${gameCfg.emoji}</span>
+              <span class="text-slate-400 text-[11px]">${round.timestamp}</span>
+              <span class="text-slate-500">&bull;</span>
+              <span class="text-slate-300 text-[11px] font-semibold">Ruleta: ${appState.currency} ${round.baseBet}</span>
+            </div>
+            <button onclick="deleteRound('${round.id}')" class="text-slate-500 hover:text-rose-400 p-1 text-xs transition" title="Eliminar partida">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+            ${round.positions.map(p => {
+              const sign = p.netAmount > 0 ? '+' : '';
+              const colorClass = p.netAmount > 0 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' :
+                                 p.netAmount === 0 ? 'text-slate-400 bg-slate-700/20 border-slate-600/30' :
+                                 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+              const rankIcon = p.rank === 1 ? '🥇' : (p.rank === 2 ? '🥈' : (p.rank === 3 ? '🥉' : `${p.rank}º`));
+              return `
+                <span class="px-2 py-0.5 rounded border ${colorClass} flex items-center gap-1 font-medium">
+                  <span>${rankIcon} ${p.playerName}</span>
+                  <span class="font-bold">(${sign}${appState.currency} ${p.netAmount.toFixed(1)})</span>
+                </span>
+              `;
+            }).join('')}
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function deleteRound(roundId) {
+      if (confirm('¿Eliminar esta partida del historial y recalcular los saldos de todos?')) {
+        appState.rounds = appState.rounds.filter(r => r.id !== roundId);
+        appState.rounds.forEach((r, idx) => r.roundNumber = idx + 1);
+        saveState();
+        renderLeaderboard();
+        updateDebtSettlements();
+        renderRoundsHistory();
+        updateStats();
+        showToast('Partida eliminada y saldos actualizados', 'fa-rotate-left');
+      }
+    }
+
+    function updateStats() {
+      const stats = computePlayerStats();
+      const numRounds = appState.rounds.length;
+
+      document.getElementById('statRoundsPlayed').innerText = appState.targetRounds 
+        ? `${numRounds} / ${appState.targetRounds}` 
+        : `${numRounds}`;
+
+      const baseBet = parseFloat(document.getElementById('inputRoundBet').value) || 0;
+      document.getElementById('statCurrentBet').innerText = `${appState.currency} ${baseBet.toFixed(2)}`;
+
+      if (stats.length > 0 && numRounds > 0) {
+        const king = stats[0];
+        const loser = stats[stats.length - 1];
+
+        document.getElementById('statTopWinner').innerText = `${king.player.name} (+${appState.currency} ${king.totalNet.toFixed(1)})`;
+        document.getElementById('statTopLoser').innerText = `${loser.player.name} (${appState.currency} ${loser.totalNet.toFixed(1)})`;
+      } else {
+        document.getElementById('statTopWinner').innerText = '-';
+        document.getElementById('statTopLoser').innerText = '-';
+      }
+    }
+
+    function changeCurrency(curr) {
+      appState.currency = curr;
+      document.querySelectorAll('.currency-symbol').forEach(el => el.innerText = curr);
+      saveState();
+      renderLeaderboard();
+      updateDebtSettlements();
+      renderRoundsHistory();
+      updateStats();
+      recalcRoundPreset();
+    }
+
+    function confirmResetAll() {
+      if (confirm('⚠️ ¿Estás seguro de iniciar una Nueva Noche en PARA LOS GO?\nSe borrarán las partidas y el balance actual, pero se conservarán a CARLOS, EDGAR, JOSEPH y EDU.')) {
+        appState.rounds = [];
+        appState.targetRounds = null;
+        saveState();
+        renderLeaderboard();
+        updateDebtSettlements();
+        renderRoundsHistory();
+        updateStats();
+        showToast('Nueva sesión de PARA LOS GO iniciada', 'fa-rotate-left');
+      }
+    }
+
+    function showToast(msg, icon = 'fa-circle-check') {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toastMsg');
+      const iconEl = document.getElementById('toastIcon');
+
+      msgEl.innerText = msg;
+      iconEl.className = `fa-solid ${icon} text-amber-400`;
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2600);
+    }
+
+    function triggerConfetti() {
+      const c = document.getElementById('confettiCanvas');
+      const cctx = c.getContext('2d');
+      c.width = window.innerWidth;
+      c.height = window.innerHeight;
+
+      const particles = [];
+      const colors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#EC4899', '#FBBF24', '#06B6D4'];
+
+      for (let i = 0; i < 90; i++) {
+        particles.push({
+          x: c.width / 2 + (Math.random() - 0.5) * 100,
+          y: c.height / 2 - 50,
+          vx: (Math.random() - 0.5) * 14,
+          vy: - (Math.random() * 12 + 4),
+          size: Math.random() * 8 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          vRot: (Math.random() - 0.5) * 10,
+          life: 1
+        });
+      }
+
+      function updateConfetti() {
+        cctx.clearRect(0, 0, c.width, c.height);
+        let active = 0;
+
+        particles.forEach(p => {
+          if (p.life > 0) {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.35;
+            p.rotation += p.vRot;
+            p.life -= 0.015;
+
+            cctx.save();
+            cctx.translate(p.x, p.y);
+            cctx.rotate((p.rotation * Math.PI) / 180);
+            cctx.fillStyle = p.color;
+            cctx.globalAlpha = Math.max(p.life, 0);
+            cctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+            cctx.restore();
+
+            active++;
+          }
+        });
+
+        if (active > 0) {
+          requestAnimationFrame(updateConfetti);
+        } else {
+          cctx.clearRect(0, 0, c.width, c.height);
+        }
+      }
+
+      requestAnimationFrame(updateConfetti);
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error('Error guardando en localStorage:', e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          appState = Object.assign(appState, parsed);
+        } else {
+          appState.players = JSON.parse(JSON.stringify(DEFAULT_PLAYERS));
+        }
+      } catch (e) {
+        console.warn('Error cargando localStorage:', e);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+
+      document.getElementById('currencySelect').value = appState.currency;
+      document.querySelectorAll('.currency-symbol').forEach(el => el.innerText = appState.currency);
+      document.getElementById('inputRoundBet').value = appState.currentBet || 10;
+
+      updateGameUI(appState.currentGame || 'fifa');
+      updateSoundIcon();
+      renderWheelChips();
+      renderPlayers();
+      renderRoundsHistory();
+      updateStats();
+
+      window.addEventListener('resize', () => {
+        const c = document.getElementById('confettiCanvas');
+        c.width = window.innerWidth;
+        c.height = window.innerHeight;
+      });
+    });
+  </script>
+</body>
+</html>
